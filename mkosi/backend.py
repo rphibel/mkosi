@@ -435,7 +435,7 @@ class PartitionTable:
 
 
 @dataclasses.dataclass
-class MkosiArgs:
+class MkosiConfig:
     """Type-hinted storage for command line arguments."""
 
     verb: Verb
@@ -556,8 +556,19 @@ class MkosiArgs:
 
     # Some extra stuff that's stored in MkosiArgs for convenience but isn't populated by arguments
     machine_id_is_fixed: bool
-    original_umask: int
     passphrase: Optional[Dict[str, str]]
+
+    output_split_root: Optional[Path] = None
+    output_split_verity: Optional[Path] = None
+    output_split_verity_sig: Optional[Path] = None
+    output_split_kernel: Optional[Path] = None
+
+
+@dataclasses.dataclass
+class MkosiState:
+    """State related properties."""
+
+    original_umask: int = 0o022
 
     output_checksum: Optional[Path] = None
     output_nspawn_settings: Optional[Path] = None
@@ -565,15 +576,16 @@ class MkosiArgs:
     output_root_hash_file: Optional[Path] = None
     output_root_hash_p7s_file: Optional[Path] = None
     output_bmap: Optional[Path] = None
-    output_split_root: Optional[Path] = None
-    output_split_verity: Optional[Path] = None
-    output_split_verity_sig: Optional[Path] = None
-    output_split_kernel: Optional[Path] = None
     cache_pre_inst: Optional[Path] = None
     cache_pre_dev: Optional[Path] = None
     output_signature: Optional[Path] = None
 
     partition_table: Optional[PartitionTable] = None
+
+
+@dataclasses.dataclass
+class MkosiArgs(MkosiState, MkosiConfig):
+    """Type-hinted storage for command line arguments and state."""
 
     def get_partition(self, ident: PartitionIdentifier) -> Optional[Partition]:
         "A shortcut to check that we have a partition table and extract the partition object"
@@ -583,6 +595,13 @@ class MkosiArgs:
 
     def architecture_is_native(self) -> bool:
         return self.architecture == platform.machine()
+
+    def extract_parent(self, name) -> Any:
+        # the first entry of the resolution order is the class itself, the last is object
+        for cls in self.__class__.mro()[1:-1]:
+            if cls.__name__ == name:
+                d = {field.name: getattr(self, field.name) for field in dataclasses.fields(cls)}
+                return cls(**d)
 
 
 def should_compress_fs(args: Union[argparse.Namespace, MkosiArgs]) -> Union[bool, str]:

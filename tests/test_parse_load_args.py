@@ -12,7 +12,7 @@ from typing import Iterator, List, Optional
 import pytest
 
 import mkosi
-from mkosi.backend import Distribution, MkosiArgs, MkosiException, Verb
+from mkosi.backend import Distribution, MkosiArgs, MkosiConfig, MkosiState, MkosiException, Verb
 
 
 def parse(argv: Optional[List[str]] = None) -> MkosiArgs:
@@ -159,3 +159,11 @@ def test_compression() -> None:
 
     with pytest.raises(MkosiException, match=".*BIOS.*squashfs"):
         parse(["--format", "gpt_squashfs", "--boot-protocols", "bios"])
+
+def test_extract_parent() -> None:
+    load_args = parse(["--distribution", "ubuntu"])
+    assert isinstance(load_args.extract_parent("MkosiConfig"), MkosiConfig)
+    assert load_args.extract_parent("MkosiConfig").distribution.name == "ubuntu"
+
+    assert isinstance(load_args.extract_parent("MkosiState"), MkosiState)
+    assert load_args.extract_parent("MkosiState").original_umask == 0o022
